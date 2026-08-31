@@ -76,17 +76,17 @@ Pi package resources are declared in the root `package.json`. Maker tools are lo
 
 ## Keep the fork in sync
 
-`origin` is the fork and `upstream` is the original repository. Bring upstream changes into the fork's `main`, then merge that updated base into `extension`:
+`origin` is this fork and `upstream` is the original repository. The [Sync upstream main](.github/workflows/sync-upstream.yml) workflow checks upstream every Monday at 03:23 UTC and updates the fork's `main` branch automatically. It can also be run manually from the repository's **Actions** tab.
+
+`main` remains a clean mirror of upstream. Updates are merged into the Pi-specific `extension` branch deliberately so conflicts or compatibility problems can be resolved before release:
 
 ```bash
-git fetch upstream
-git switch main
-git merge --ff-only upstream/main
-git push origin main
-
+git fetch origin
 git switch extension
-git merge main
+git merge origin/main
+npm install
+npm run typecheck
 git push origin extension
 ```
 
-Resolve any conflicts on `extension`; keep `main` as a clean mirror of upstream.
+If the merge conflicts, resolve it on `extension` and rerun the typecheck before pushing.
