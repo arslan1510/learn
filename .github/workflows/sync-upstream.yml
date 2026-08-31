@@ -1,0 +1,30 @@
+name: Sync upstream main
+
+on:
+  schedule:
+    - cron: "23 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out extension branch
+        uses: actions/checkout@v4
+        with:
+          ref: extension
+          fetch-depth: 0
+
+      - name: Update fork main from upstream
+        run: |
+          git remote add upstream https://github.com/amosblomqvist/learn.git
+          git fetch upstream main
+          git push origin refs/remotes/upstream/main:refs/heads/main
