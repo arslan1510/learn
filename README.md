@@ -39,10 +39,10 @@ The maker agents inherit your current subagent model policy; this package does n
 Install this repository as a user-scoped local Pi package:
 
 ```bash
-pi install /home/aleph/Desktop/dev/learn
+pi install /absolute/path/to/learn
 ```
 
-Pi records the path in `~/.pi/agent/settings.json`, making the package available in every project on this machine. The directory must remain at that path.
+Replace `/absolute/path/to/learn` with wherever you cloned the repository. Pi records that path in `~/.pi/agent/settings.json`, making the package available in every project on the machine. The directory must remain at that path.
 
 For a portable install from this fork's package branch instead:
 
