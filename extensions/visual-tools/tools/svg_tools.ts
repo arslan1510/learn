@@ -7,11 +7,9 @@
  *   render_svg  — render whatever is in the file → PNG, returned inline; with
  *                 `save_as`, also publish it into <cwd>/viz
  *
- * Bundled inside the visual-tools extension and exposed to subagents via the
- * interactive-subagents `registerToolExtension` hook (see ../index.ts). Loaded
- * by the spawned child pi process for any subagent whose `tools:` frontmatter
- * includes these names (currently just svg-maker). All three names map to this
- * one file.
+ * Loaded only in the svg-maker child by pi-subagents through that agent's
+ * `subagentOnlyExtensions` field. All three names map to this one file; they do
+ * not enter the parent session's tool list.
  *
  * Rendering shells out to rsvg-convert (librsvg — good system-font handling),
  * falling back to ImageMagick's `magick` if rsvg-convert is absent. Both are
@@ -20,7 +18,7 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
-import { Type } from "@sinclair/typebox"
+import { Type } from "typebox"
 import {
   applyEdit,
   existsSync,

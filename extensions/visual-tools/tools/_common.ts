@@ -13,10 +13,9 @@ import { tmpdir } from "node:os"
 import { basename, dirname, join } from "node:path"
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 
-// rsvg-convert lives under MacPorts (/opt/local/bin); magick/gs under
-// /usr/local/bin; Homebrew under /opt/homebrew/bin. Augment PATH so the child
-// pi process (which may have inherited a thin PATH) still resolves them.
-export const EXTRA_PATH = ["/opt/local/bin", "/usr/local/bin", "/opt/homebrew/bin"]
+// Include common macOS and Linux binary locations because child Pi processes
+// can inherit a thinner PATH than the interactive shell.
+export const EXTRA_PATH = ["/opt/local/bin", "/usr/local/bin", "/opt/homebrew/bin", "/usr/bin", "/snap/bin"]
 
 // Transient session/preview files live under the OS temp dir (NOT the vault),
 // so only the PUBLISHED PNG ever lands inside the Obsidian vault (viz/).
@@ -26,6 +25,11 @@ export const FILES_DIRNAME = "viz"
 export const CHROME_CANDIDATES = [
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   "/Applications/Chromium.app/Contents/MacOS/Chromium",
+  "/usr/bin/google-chrome-stable",
+  "/usr/bin/google-chrome",
+  "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
+  "/snap/bin/chromium",
 ]
 
 export function findChrome(): string | undefined {

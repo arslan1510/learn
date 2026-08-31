@@ -1,39 +1,92 @@
-# learn
+# pi-learn
 
 [![video](assets/thumbnail.png)](https://www.youtube.com/watch?v=kzcI5F4tGiU)
 
-My AI learning system from this video: [How I Use AI to Learn Things](https://www.youtube.com/watch?v=kzcI5F4tGiU).
+A reusable [Pi](https://github.com/earendil-works/pi) package for learning from first principles. It combines a teaching skill, graded quizzes, Obsidian-friendly lesson logs, and maker subagents that render and inspect lesson visuals before publishing them.
 
-This is a personal system I built for myself, shared as-is. Built as a pi configuration: the teaching philosophy encoded in a skill, a few small extensions, and agent definitions.
+## Included resources
 
-## What's in it
+- `skills/teach/` — first-principles teaching and discovery-based explanations
+- `skills/visualize/` — decides when a visual genuinely improves a lesson
+- `extensions/quiz.ts` — graded single- and multi-select questions with immediate feedback
+- `extensions/md-log.ts` — mirrors lesson prose and question/answer blocks into Markdown
+- `agents/mermaid-maker.md` — verifies structural diagrams by rendering and inspecting them
+- `agents/svg-maker.md` — verifies spatial/geometric visuals by rendering and inspecting them
+- `extensions/visual-tools/tools/` — child-only authoring and rendering tools used by the maker agents
 
-- `skills/teach/` — the philosophy and the process
-- `skills/visualize/` — adds a correct, minimal diagram to a lesson when an idea is clearer as a picture
-- `extensions/ask-user-question/` — the agent asks you questions through a UI popup
-- `extensions/quiz/` — graded questions with instant feedback (✓/✗, correct answer, explanation)
-- `extensions/md-log/` — link a markdown file to the session
-- `extensions/visual-tools/` — tools for visualization subagents
-- `agents/` — `researcher`, `svg-maker`, `mermaid-maker`: the subagents the system delegates to
+The package intentionally does **not** bundle its own `ask_user_question`, web-research, or subagent launcher. It uses the maintained extensions already installed in your Pi environment instead.
 
-## Install
+## Dependencies
 
-This repo **is** a `.pi` directory. From your learning project's root:
+Install these Pi packages once at user scope:
 
 ```bash
-git clone https://github.com/amosblomqvist/learn .pi
+pi install npm:@juicesharp/rpiv-ask-user-question
+pi install npm:pi-subagents
+pi install npm:pi-web-access
 ```
 
-Then open pi in that directory. (Or copy the pieces you want into your existing project config.)
+They provide:
 
-## Requirements
+- `@juicesharp/rpiv-ask-user-question` — ungraded preference and clarification questions
+- `pi-subagents` — the `subagent` tool, built-in `researcher`, and package-agent discovery
+- `pi-web-access` — the web tools used by the built-in researcher
 
-- [pi](https://github.com/earendil-works/pi)
-- A subagent implementation, so the system can spawn the researcher and the visual makers. Recommended: [pi-interactive-subagents](https://github.com/amosblomqvist/pi-interactive-subagents) (tmux only). With it, everything works out of the box. Any other implementation works too, but expect to adapt the agent definitions, e.g. `agents/researcher.md` lists `safe_bash` in its tools, which is specific to that extension.
-- `ask-user-question` — use the copy bundled here. If your setup already has an `ask-user-question` extension, use **this** one in its place. Popups from different extensions serialize through a shared UI lock, which only works when it's the same implementation.
+The maker agents inherit your current subagent model policy; this package does not pin provider-specific model IDs.
 
-## Notes
+## Install everywhere
 
-You can run the system without subagents. The main session does the teaching. You just lose the researcher (truth verification) and the generated visuals.
+Install this repository as a user-scoped local Pi package:
 
-The teaching skill is written for one learner (me). Edit the skill to fit how you learn best.
+```bash
+pi install /home/aleph/Desktop/dev/learn
+```
+
+Pi records the path in `~/.pi/agent/settings.json`, making the package available in every project on this machine. The directory must remain at that path.
+
+For a portable install from this fork's package branch instead:
+
+```bash
+pi install git:github.com/arslan1510/learn@extension
+```
+
+Do **not** also clone this repository into each project's `.pi` directory. One user-scoped package installation is enough.
+
+## Use
+
+Start Pi in any project. The `teach` and `visualize` skills, `quiz` tool, Markdown log commands, and maker agents are discovered automatically.
+
+```text
+/md-log path/to/existing-note.md
+/md-unlog
+```
+
+`/md-log` only links an existing file. It backfills the active session branch and then appends new user prompts, lesson prose, quizzes, and `ask_user_question` exchanges.
+
+The visual makers publish verified PNGs under `<project>/viz/`. Mermaid rendering uses the package's `@mermaid-js/mermaid-cli` dependency. SVG rendering requires `rsvg-convert` (preferred) or ImageMagick's `magick` on `PATH`.
+
+## Development
+
+```bash
+npm install
+npm run typecheck
+```
+
+Pi package resources are declared in the root `package.json`. Maker tools are loaded only in their child agents through `subagentOnlyExtensions`, so they do not clutter the parent session's tool list.
+
+## Keep the fork in sync
+
+`origin` is the fork and `upstream` is the original repository. Bring upstream changes into the fork's `main`, then merge that updated base into `extension`:
+
+```bash
+git fetch upstream
+git switch main
+git merge --ff-only upstream/main
+git push origin main
+
+git switch extension
+git merge main
+git push origin extension
+```
+
+Resolve any conflicts on `extension`; keep `main` as a clean mirror of upstream.

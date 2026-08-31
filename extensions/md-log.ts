@@ -25,7 +25,7 @@
  * .md-link extension this was modeled on).
  */
 
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -178,21 +178,24 @@ export default function mdLog(pi: ExtensionAPI) {
 	}
 
 	function answerCalloutAsk(details: any): string {
-		const status = details?.status;
-		if (status === "cancelled") {
-			return callout("warning", "Question — cancelled", ["(user skipped)"]);
+		if (details?.cancelled === true) {
+			const body = ["(user declined)"];
+			if (details?.globalNote) body.push("", `Global note: ${details.globalNote}`);
+			return callout("warning", "Question — cancelled", body);
 		}
-		if (status === "unavailable") {
-			return callout("warning", "Question — unavailable", [details?.message || ""]);
+
+		const answers: any[] = Array.isArray(details?.answers) ? details.answers : [];
+		const body: string[] = [];
+		for (const answer of answers) {
+			const value = answer.kind === "multi"
+				? (Array.isArray(answer.selected) ? answer.selected.join(", ") : "(none)")
+				: (answer.answer ?? "(no answer)");
+			body.push(`${answer.question}: ${value}`);
+			if (answer.notes) body.push(`  Note: ${answer.notes}`);
 		}
-		const answers: any[] = details?.answers || [];
-		const body: string[] = answers.map((a) => {
-			if (a.type === "other") return `Other: ${a.label}`;
-			if (a.type === "text") return a.label;
-			return `${a.index}. ${a.label}`;
-		});
+		if (details?.globalNote) body.push(`Global note: ${details.globalNote}`);
 		if (body.length === 0) body.push("(no answer)");
-		return callout("example", "Answer", body);
+		return callout("example", answers.length > 1 ? "Answers" : "Answer", body);
 	}
 
 	// --- Event handlers ---
@@ -226,19 +229,21 @@ export default function mdLog(pi: ExtensionAPI) {
 		// toolResult messages are handled by the tool_result event (for QA tools).
 	});
 
-	// ask_user_question never shuffles its options, so the tool_call args are
-	// already the true display order — safe to write the question live, before
-	// the user answers.
-	pi.on("tool_call", async (event, _ctx) => {
+	// rpiv-ask-user-question emits this stable event after validation and before
+	// opening its UI. Listening by channel name avoids importing across Pi's
+	// isolated package module roots.
+	pi.events.on("rpiv:ask-user:prompt", async (payload: any) => {
 		if (!logFile) return;
-		const toolName = (event as any).toolName;
-		if (toolName !== "ask_user_question") return;
-		const input = (event as any).input || {};
-		const question: string = input.question || "";
-		const context: string | undefined = input.details?.trim() || undefined;
-		const options: Array<{ label: string }> = Array.isArray(input.options) ? input.options : [];
-		const block = questionCallout("Question", question, context, options);
-		await withLock(() => appendToFile(block));
+		const questions: any[] = Array.isArray(payload?.questions) ? payload.questions : [];
+		const blocks = questions.map((question) => questionCallout(
+			question.header || "Question",
+			question.question || "",
+			undefined,
+			Array.isArray(question.options) ? question.options : [],
+		));
+		if (blocks.length > 0) {
+			await withLock(() => appendToFile(blocks.join("\n\n")));
+		}
 	});
 
 	// quiz DOES shuffle its options inside execute(), so the tool_call args are
@@ -316,7 +321,7 @@ export default function mdLog(pi: ExtensionAPI) {
 				"md-log",
 				theme.fg("accent", "🗒 ") + theme.fg("dim", path.basename(resolved)),
 			);
-			ctx.ui.notify(`Linked: ${resolved} (${written} entries backfilled)`, "success");
+			ctx.ui.notify(`Linked: ${resolved} (${written} entries backfilled)`, "info");
 		},
 	});
 
@@ -406,21 +411,28 @@ export default function mdLog(pi: ExtensionAPI) {
 			if (msg.role === "toolResult") {
 				if (!QA_TOOLS.has(msg.toolName)) continue;
 				const tc = toolCallArgs.get(msg.toolCallId);
-				// Question block. For quiz, use the persisted result's `details.options`
-				// — the TRUE post-shuffle display order the user actually saw — rather
-				// than the original tool-call args, which are the pre-shuffle author
-				// order and can mismatch what's on screen. ask_user_question never
-				// shuffles, so its tool-call args are already the true order.
+				// Question block. Quiz persists its true post-shuffle order in the
+				// result. rpiv-ask-user-question accepts a questionnaire, so replay each
+				// authored question in order.
 				if (tc) {
 					const a = tc.args || {};
-					const label = tc.name === "quiz" ? "Quiz" : "Question";
-					const shuffled = msg.toolName === "quiz"
-						? (msg.details?.options as Array<{ index: number; label: string }> | undefined)
-						: undefined;
-					const options = shuffled && shuffled.length > 0
-						? shuffled.map((o) => ({ label: o.label }))
-						: (Array.isArray(a.options) ? a.options : []);
-					blocks.push(questionCallout(label, a.question || "", a.details?.trim() || undefined, options));
+					if (tc.name === "quiz") {
+						const shuffled = msg.details?.options as Array<{ index: number; label: string }> | undefined;
+						const options = shuffled && shuffled.length > 0
+							? shuffled.map((o) => ({ label: o.label }))
+							: (Array.isArray(a.options) ? a.options : []);
+						blocks.push(questionCallout("Quiz", a.question || "", a.details?.trim() || undefined, options));
+					} else {
+						const questions: any[] = Array.isArray(a.questions) ? a.questions : [];
+						for (const question of questions) {
+							blocks.push(questionCallout(
+								question.header || "Question",
+								question.question || "",
+								undefined,
+								Array.isArray(question.options) ? question.options : [],
+							));
+						}
+					}
 				}
 				if (msg.toolName === "quiz") {
 					blocks.push(answerCalloutQuiz(msg.details));

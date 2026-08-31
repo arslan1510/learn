@@ -7,11 +7,9 @@
  *   render_mermaid  — render whatever is in the file → PNG, returned inline;
  *                     with `save_as`, also publish it into <cwd>/viz
  *
- * Bundled inside the visual-tools extension and exposed to subagents via the
- * interactive-subagents `registerToolExtension` hook (see ../index.ts). NOT a
- * global pi extension — loaded by the spawned child pi process for any subagent
- * whose `tools:` frontmatter includes these names (currently just
- * mermaid-maker). All three names map to this one file.
+ * Loaded only in the mermaid-maker child by pi-subagents through that agent's
+ * `subagentOnlyExtensions` field. All three names map to this one file; they do
+ * not enter the parent session's tool list.
  *
  * Rendering shells out to the bundled @mermaid-js/mermaid-cli (`mmdc`) with a
  * puppeteer config pointing at an installed Chrome, so no Chromium download is
@@ -20,7 +18,7 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
-import { Type } from "@sinclair/typebox"
+import { Type } from "typebox"
 import { fileURLToPath } from "node:url"
 import {
   applyEdit,
@@ -39,8 +37,18 @@ import {
 } from "./_common.ts"
 
 const TOOL_DIR = dirname(fileURLToPath(import.meta.url))
-const EXTENSION_DIR = dirname(TOOL_DIR)
-const MMDC_BIN = join(EXTENSION_DIR, "node_modules", ".bin", "mmdc")
+
+function findMmdc(): string | undefined {
+  let dir = TOOL_DIR
+  while (true) {
+    const candidate = join(dir, "node_modules", ".bin", "mmdc")
+    if (existsSync(candidate)) return candidate
+    const parent = dirname(dir)
+    if (parent === dir) return undefined
+    dir = parent
+  }
+}
+
 const GROUP = "mermaid"
 const BODY_FILE = "diagram.mmd"
 const RENDER_TIMEOUT_MS = 120_000
@@ -152,9 +160,16 @@ export default function mermaidToolsExtension(pi: ExtensionAPI) {
         "utf8",
       )
 
+      const mmdc = findMmdc()
+      if (!mmdc) {
+        throw new Error(
+          "render_mermaid: mmdc is unavailable. Reinstall the learn Pi package so @mermaid-js/mermaid-cli is installed.",
+        )
+      }
+
       const outPath = join(workDir, `render-${Date.now()}.png`)
       const res = await run(
-        MMDC_BIN,
+        mmdc,
         ["-i", bodyPath, "-o", outPath, "-p", cfgPath, "-s", "2", "-b", "white"],
         { cwd: workDir, timeoutMs: RENDER_TIMEOUT_MS, env: { PUPPETEER_SKIP_DOWNLOAD: "1" } },
       )

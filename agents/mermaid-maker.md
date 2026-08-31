@@ -2,10 +2,12 @@
 name: mermaid-maker
 description: Authors ONE Mermaid diagram from a brief, renders it to a PNG, LOOKS at the result, iterates until it is correct and clean, publishes the PNG into the Obsidian vault, and returns the filename. For structural/relational visuals — dependency graphs, flows, sequences, state machines, trees, ER, timelines.
 tools: write_mermaid, edit_mermaid, render_mermaid, read
-model: anthropic/claude-sonnet-5
+subagentOnlyExtensions: ../extensions/visual-tools/tools/mermaid_tools.ts
 thinking: medium
-system-prompt: append
-auto-exit: true
+systemPromptMode: append
+acceptance: { level: none, reason: "visual artifact is verified by the maker's render-and-inspect loop" }
+acceptanceRole: writer
+mutationTools: write_mermaid, edit_mermaid, render_mermaid
 ---
 
 # Mermaid Maker

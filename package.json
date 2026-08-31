@@ -1,0 +1,57 @@
+{
+  "name": "@arslan1510/pi-learn",
+  "version": "1.0.0",
+  "description": "A reusable Pi package for first-principles teaching, graded quizzes, markdown lesson logs, and verified visuals.",
+  "private": true,
+  "type": "module",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "learning",
+    "teaching"
+  ],
+  "files": [
+    "agents/",
+    "assets/",
+    "extensions/",
+    "skills/",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions/md-log.ts",
+      "./extensions/quiz.ts"
+    ],
+    "skills": [
+      "./skills"
+    ],
+    "subagents": {
+      "agents": [
+        "./agents"
+      ]
+    },
+    "image": "https://raw.githubusercontent.com/arslan1510/learn/extension/assets/thumbnail.png"
+  },
+  "dependencies": {
+    "@mermaid-js/mermaid-cli": "^11.4.2",
+    "typebox": "^1.1.38",
+    "yauzl": "^3.4.0"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "allowScripts": {
+    "puppeteer@25.9.0": true
+  }
+}
